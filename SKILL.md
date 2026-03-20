@@ -24,11 +24,33 @@ Make skills get better over time. Capture lessons from retros, detect upstream d
 
 **Auto-triggered** (from conversation context about skill underperformance): Skip the menu and go directly to the inferred mode. Signals like "this skill missed X" → Retro. "My skill changes got overwritten" → Update Skills / Compound Learning.
 
+## Skill Contents
+
+This skill is a folder with scripts and a hook — not just this markdown file. Read the relevant files when you need them:
+
+```
+compounding-skills/
+├── SKILL.md                  ← You are here (instructions and flows)
+├── scripts/
+│   ├── merkle-hash.sh        ← Compute SHA-256 Merkle hash of a skill directory
+│   ├── drift-check.sh        ← Compare current hash to stored hash, detect drift
+│   ├── test-merkle-hash.sh   ← 6 tests for merkle-hash.sh
+│   └── test-drift-check.sh   ← 4 tests for drift-check.sh
+├── hooks/
+│   └── compounding-skills-pretooluse.sh  ← PreToolUse hook (installed separately)
+└── docs/
+    └── design-spec.md        ← Full design rationale and architecture decisions
+```
+
+**When to read `scripts/merkle-hash.sh`:** Before computing hashes — understand the algorithm (sorted file paths, per-file SHA-256, concatenated, then hashed).
+
+**When to read `docs/design-spec.md`:** When you need to understand *why* a design decision was made (e.g., why Merkle hashing over git SHAs, why intent-based lessons over diffs).
+
 ## Conventions
 
 - **Lessons directory:** `~/.claude/compounding-skills-lessons/`
-- **Merkle hash script:** `~/.claude/skills/compounding-skills/scripts/merkle-hash.sh`
-- **Drift check script:** `~/.claude/skills/compounding-skills/scripts/drift-check.sh`
+- **Merkle hash script:** `scripts/merkle-hash.sh` (relative to this skill's directory)
+- **Drift check script:** `scripts/drift-check.sh` (relative to this skill's directory)
 - **Lock file metadata:** `~/.agents/.skill-lock.json` (for upstream source info)
 
 ## Mode 1: Retro
@@ -84,7 +106,7 @@ Capture a lesson from retro feedback and improve a skill.
 6. **Update the lesson entry** after skill-creator completes:
    - Set **Change made** to what was actually modified
    - Set **Files touched** to the list of files that changed
-   - Compute Merkle hash: `bash ~/.claude/skills/compounding-skills/scripts/merkle-hash.sh <skill-dir>`
+   - Compute Merkle hash: `bash scripts/merkle-hash.sh <skill-dir>`
    - Set **Applied at content hash** to the computed hash
 
 7. **Update the lock sidecar** (`~/.claude/compounding-skills-lessons/<skill-name>.lock.json`):
@@ -115,7 +137,7 @@ Detect upstream drift for one or all skills.
 
 2. **For skills with lessons** (have a `.lock.json` in `~/.claude/compounding-skills-lessons/`):
    - Resolve the skill directory from `skill_path` in the lock file (expand `~`)
-   - Compute current Merkle hash: `bash ~/.claude/skills/compounding-skills/scripts/merkle-hash.sh <skill-dir>`
+   - Compute current Merkle hash: `bash scripts/merkle-hash.sh <skill-dir>`
    - Compare to `content_hash` in the lock sidecar:
      - **Match:** "No upstream changes detected for `<skill-name>`, skipping."
      - **Mismatch:** "The `<skill-name>` skill has been updated upstream. X lessons need reapplication."
@@ -173,6 +195,18 @@ Reapply historical lessons to skills that were updated upstream.
 6. **Summary:** "X lessons reapplied, Y skipped (merged upstream), Z deferred."
 
 7. **Ask about PR.** "Want to PR these changes to the upstream repo?"
+
+## Gotchas
+
+These are failure modes that come up in practice. Read before executing any mode.
+
+- **Don't guess the skill name.** If the conversation mentions multiple skills or the reference is ambiguous, ask. A lesson applied to the wrong skill is worse than no lesson at all.
+- **Always hash *after* editing, not before.** The Merkle hash must reflect the state of the skill *after* your change. Computing it before and recording that hash means drift detection will immediately flag the skill as changed.
+- **Never batch lock updates.** Update the `.lock.json` and lesson file immediately after each lesson is applied — not after all lessons in a batch. If the process is interrupted mid-batch and you batched, retry will re-apply already-applied lessons. Per-lesson updates make it idempotent.
+- **Don't re-apply a lesson that's already in upstream.** Compound Learning's merged-PR detection exists for a reason. If you skip it and blindly re-apply, you'll duplicate content or create conflicts. Always check intent presence first.
+- **The hash script must run on the skill directory, not a single file.** `merkle-hash.sh` takes a directory path. Passing `SKILL.md` directly will error. The hash covers all files in the directory.
+- **Lesson IDs are sequential integers, not titles.** `L001`, `L002`, etc. Don't use the lesson title as an identifier — titles can be edited, IDs can't. The lock sidecar's `lessons_applied` array uses IDs.
+- **`skill_path` in the lock sidecar uses `~/` prefix, not absolute paths.** This is for portability. Always expand `~` before using the path in shell commands.
 
 ## Edge Cases
 
