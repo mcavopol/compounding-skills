@@ -56,20 +56,15 @@ Summary: 1 reapplied, 1 merged upstream, 0 deferred
 
 ### 1. Install the skill
 
-Clone this repo and symlink (or copy) into your Claude Code skills directory:
-
 ```bash
-git clone https://github.com/mcavopol/compounding-skills.git ~/Code/compounding-skills
-
-# Symlink into Claude Code skills
-ln -s ~/Code/compounding-skills ~/.claude/skills/compounding-skills
+npx skills add mcavopol/compounding-skills
 ```
 
-Or copy directly:
+Or install manually via git clone + symlink:
 
 ```bash
 git clone https://github.com/mcavopol/compounding-skills.git ~/Code/compounding-skills
-cp -r ~/Code/compounding-skills ~/.claude/skills/compounding-skills
+ln -s ~/Code/compounding-skills ~/.claude/skills/compounding-skills
 ```
 
 ### 2. Install the drift detection hook
