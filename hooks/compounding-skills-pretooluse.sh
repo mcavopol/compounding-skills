@@ -28,22 +28,27 @@ if [[ -z "$SKILL_NAME" ]]; then
   exit 0
 fi
 
-LESSONS_DIR="$HOME/.claude/compounding-skills-lessons"
-SCRIPTS_DIR="$HOME/.claude/skills/compounding-skills/scripts"
-
-# Check if we have lessons for this skill
-if [[ ! -f "$LESSONS_DIR/$SKILL_NAME.lock.json" ]]; then
+# Validate skill name — alphanumeric, hyphens, underscores only
+if [[ ! "$SKILL_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
   exit 0
 fi
 
-# Resolve skill directory path from lock file
-SKILL_PATH=$(python3 -c "
+LESSONS_DIR="$HOME/.claude/compounding-skills-lessons"
+SCRIPTS_DIR="$HOME/.claude/skills/compounding-skills/scripts"
+
+LOCK_FILE="$LESSONS_DIR/$SKILL_NAME.lock.json"
+
+# Check if we have lessons for this skill
+if [[ ! -f "$LOCK_FILE" ]]; then
+  exit 0
+fi
+
+# Resolve skill directory path from lock file (pass path via env to avoid injection)
+SKILL_PATH=$(LOCK_FILE="$LOCK_FILE" python3 -c "
 import json, os
-lock = json.load(open('$LESSONS_DIR/$SKILL_NAME.lock.json'))
+lock = json.load(open(os.environ['LOCK_FILE']))
 path = lock.get('skill_path', '')
-# Expand ~ to home directory
 path = os.path.expanduser(path)
-# Get directory from file path
 print(os.path.dirname(path))
 " 2>/dev/null || echo "")
 

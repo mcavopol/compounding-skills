@@ -34,7 +34,7 @@ assert_ne() {
 
 # Setup temp directory
 TMPDIR_BASE=$(mktemp -d)
-trap "rm -rf $TMPDIR_BASE" EXIT
+trap 'rm -rf "$TMPDIR_BASE"' EXIT
 
 # Test 1: Single file produces a hash
 SKILL_DIR="$TMPDIR_BASE/test1"

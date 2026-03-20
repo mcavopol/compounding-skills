@@ -27,7 +27,7 @@ assert_exit() {
 
 # Setup
 TMPDIR_BASE=$(mktemp -d)
-trap "rm -rf $TMPDIR_BASE" EXIT
+trap 'rm -rf "$TMPDIR_BASE"' EXIT
 LESSONS_DIR="$TMPDIR_BASE/lessons"
 SKILL_DIR="$TMPDIR_BASE/skill"
 mkdir -p "$LESSONS_DIR" "$SKILL_DIR"

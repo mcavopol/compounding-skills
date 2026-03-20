@@ -12,6 +12,12 @@ SKILL_NAME="$1"
 SKILL_DIR="$2"
 LESSONS_DIR="${3:-$HOME/.claude/compounding-skills-lessons}"
 
+# Validate skill name — alphanumeric, hyphens, underscores only
+if [[ ! "$SKILL_NAME" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+  echo "Error: invalid skill name: $SKILL_NAME" >&2
+  exit 1
+fi
+
 LOCK_FILE="$LESSONS_DIR/$SKILL_NAME.lock.json"
 
 # No lock file = no lessons for this skill
@@ -22,9 +28,17 @@ fi
 # Compute current hash
 CURRENT_HASH=$("$SCRIPT_DIR/merkle-hash.sh" "$SKILL_DIR")
 
-# Read stored hashes from lock file
-STORED_HASH=$(python3 -c "import json,sys; d=json.load(open('$LOCK_FILE')); print(d.get('content_hash',''))")
-ACKNOWLEDGED_HASH=$(python3 -c "import json,sys; d=json.load(open('$LOCK_FILE')); print(d.get('drift_acknowledged_hash','') or '')")
+# Read stored hashes from lock file (pass path via env to avoid shell injection into python)
+STORED_HASH=$(LOCK_FILE="$LOCK_FILE" python3 -c "
+import json, os
+d = json.load(open(os.environ['LOCK_FILE']))
+print(d.get('content_hash', ''))
+")
+ACKNOWLEDGED_HASH=$(LOCK_FILE="$LOCK_FILE" python3 -c "
+import json, os
+d = json.load(open(os.environ['LOCK_FILE']))
+print(d.get('drift_acknowledged_hash', '') or '')
+")
 
 # Check: current matches stored → no drift
 if [[ "$CURRENT_HASH" == "$STORED_HASH" ]]; then
